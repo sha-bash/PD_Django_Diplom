@@ -1,3 +1,5 @@
+import json
+import yaml
 from django.http import JsonResponse
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
@@ -9,7 +11,9 @@ from django.contrib.auth import get_user_model
 from requests import get
 from yaml import load as load_yaml, Loader
 from .models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, Contact
+import logging
 
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -19,13 +23,12 @@ class PartnerUpdate(View):
     Класс для обновления прайса от поставщика
     """
     def post(self, request, *args, **kwargs):
-        # if not request.user.is_authenticated:
-        #     return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        try:
+            data = json.loads(request.body)
+            url = data.get('url')
+        except json.JSONDecodeError:
+            return JsonResponse({'Status': False, 'Error': 'Invalid JSON data'})
 
-        # if request.user.type != 'shop':
-        #     return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-
-        url = request.data.get('url')
         if url:
             validate_url = URLValidator()
             try:
@@ -33,33 +36,44 @@ class PartnerUpdate(View):
             except ValidationError as e:
                 return JsonResponse({'Status': False, 'Error': str(e)})
             else:
-                stream = get(url).content
+                try:
+                    response = get(url)
+                    response.raise_for_status()  # Проверка на успешный статус HTTP
+                    stream = response.content
+                    data = yaml.safe_load(stream)
+                except yaml.YAMLError as e:
+                    return JsonResponse({'Status': False, 'Error': f'Failed to load YAML data: {str(e)}'})
+                except Exception as e:
+                    return JsonResponse({'Status': False, 'Error': f'Failed to fetch or parse data: {str(e)}'})
 
-                data = load_yaml(stream, Loader=Loader)
+                try:
+                    shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
+                    for category in data['categories']:
+                        category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
+                        category_object.shops.add(shop.id)
+                        category_object.save()
+                    ProductInfo.objects.filter(shop_id=shop.id).delete()
+                    for item in data['goods']:
+                        product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
 
-                shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
-                for category in data['categories']:
-                    category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
-                    category_object.shops.add(shop.id)
-                    category_object.save()
-                ProductInfo.objects.filter(shop_id=shop.id).delete()
-                for item in data['goods']:
-                    product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
+                        product_info = ProductInfo.objects.create(product_id=product.id,
+                                                                  external_id=item['id'],
+                                                                  model=item['model'],
+                                                                  price=item['price'],
+                                                                  price_rrc=item['price_rrc'],
+                                                                  quantity=item['quantity'],
+                                                                  shop_id=shop.id)
+                        for name, value in item['parameters'].items():
+                            parameter_object, _ = Parameter.objects.get_or_create(name=name)
+                            ProductParameter.objects.create(product_info_id=product_info.id,
+                                                            parameter_id=parameter_object.id,
+                                                            value=value)
 
-                    product_info = ProductInfo.objects.create(product_id=product.id,
-                                                              external_id=item['id'],
-                                                              model=item['model'],
-                                                              price=item['price'],
-                                                              price_rrc=item['price_rrc'],
-                                                              quantity=item['quantity'],
-                                                              shop_id=shop.id)
-                    for name, value in item['parameters'].items():
-                        parameter_object, _ = Parameter.objects.get_or_create(name=name)
-                        ProductParameter.objects.create(product_info_id=product_info.id,
-                                                        parameter_id=parameter_object.id,
-                                                        value=value)
-
-                return JsonResponse({'Status': True})
+                    return JsonResponse({'Status': True})
+                except KeyError as e:
+                    return JsonResponse({'Status': False, 'Error': f'Missing key in YAML data: {str(e)}'})
+                except Exception as e:
+                    return JsonResponse({'Status': False, 'Error': f'Failed to process YAML data: {str(e)}'})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
@@ -85,11 +99,15 @@ class LoginView(View):
         email = request.POST.get('email')
         password = request.POST.get('password')
 
+        logger.info(f"Received login data: email={email}, password={password}")
+
         user = authenticate(request, username=email, password=password)
         if user is not None:
             login(request, user)
+            logger.info(f"User {email} logged in successfully")
             return JsonResponse({'Status': True})
         else:
+            logger.warning(f"Failed login attempt for email: {email}")
             return JsonResponse({'Status': False, 'Errors': 'Неверный email или пароль'})
         
 
@@ -102,12 +120,17 @@ class RegistrationView(View):
         email = request.POST.get('email')
         password = request.POST.get('password')
 
+        logger.info(f"Received registration data: first_name={first_name}, last_name={last_name}, email={email}, password={password}")
+
         if not (first_name and last_name and email and password):
+            logger.warning("Missing required arguments")
             return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
         try:
-            User.objects.create_user(email=email, password=password, first_name=first_name, last_name=last_name)
+            User.objects.create_user(email=email, password=password, first_name=first_name, last_name=last_name, is_active=True)
+            logger.info(f"User {email} registered successfully")
         except Exception as e:
+            logger.error(f"Error during user registration: {str(e)}")
             return JsonResponse({'Status': False, 'Errors': str(e)})
 
         return JsonResponse({'Status': True})
