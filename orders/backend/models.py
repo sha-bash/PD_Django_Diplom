@@ -82,7 +82,7 @@ class User(AbstractUser):
     )
     is_active = models.BooleanField(
         _('active'),
-        default=False,
+        default=True,
         help_text=_(
             'Designates whether this user should be treated as active. '
             'Unselect this instead of deleting accounts.'
@@ -98,7 +98,7 @@ class User(AbstractUser):
             'The groups this user belongs to. A user will get all permissions '
             'granted to each of their groups.'
         ),
-        related_name="backend_user_set",  # Добавляем related_name
+        related_name="backend_user_set",  
         related_query_name="user",
     )
     user_permissions = models.ManyToManyField(
@@ -106,7 +106,7 @@ class User(AbstractUser):
         verbose_name=_('user permissions'),
         blank=True,
         help_text=_('Specific permissions for this user.'),
-        related_name="backend_user_set",  # Добавляем related_name
+        related_name="backend_user_set",  
         related_query_name="user",
     )
 

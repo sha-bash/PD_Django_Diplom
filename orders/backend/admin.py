@@ -1,13 +1,35 @@
 from django.contrib import admin
-from models import Product, Category, Order, OrderItem, User, Shop
-# Register your models here.
+from django.contrib.auth.admin import UserAdmin
+
+from backend.models import User, Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
+    Contact, ConfirmEmailToken
 
 
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'category', 'image')
+@admin.register(User)
+class CustomUserAdmin(UserAdmin):
+    """
+    Панель управления пользователями
+    """
+    model = User
 
-class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'company', 'position')}),
+        ('Permissions', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+        }),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+    )
+    list_display = ('email', 'first_name', 'last_name', 'is_staff')
 
-class UserAdmin(admin.ModelAdmin):
-    list_display = ('id', 'username', 'email')
+
+admin.site.register(Shop)
+admin.site.register(Category)
+admin.site.register(Product)
+admin.site.register(ProductInfo)
+admin.site.register(Parameter)
+admin.site.register(ProductParameter)
+admin.site.register(Order)
+admin.site.register(OrderItem)
+admin.site.register(Contact)
+admin.site.register(ConfirmEmailToken)
