@@ -1,5 +1,5 @@
 # Инструкция по запуску проекта
-1. Клонировать репозиторий с помощью команды `git clone https://github.com/netology-code/python-final-diplom.git`
+1. Клонировать репозиторий с помощью команды `https://github.com/sha-bash/PD_Django_Diplom.git`
 2. В терминале выполнить команды `docker-compose up --build`
 
 
