@@ -1,102 +1,156 @@
-# API Documentation
+# Инструкция по запуску проекта
+1. Клонировать репозиторий с помощью команды `git clone https://github.com/netology-code/python-final-diplom.git`
+2. В терминале выполнить команды `docker-compose up --build`
 
-## Endpoints
 
-### 1. User Registration
+# Документация API
 
-* **Method:** `POST`
-* **URL:** `http://localhost:8000/api/v1/register/`
-* **Description:** Register a new user in the system.
-* **Parameters:**
-	+ `first_name` (string) - User's first name.
-	+ `last_name` (string) - User's last name.
-	+ `email` (string) - User's email.
-	+ `password` (string) - User's password.
-* **Example Request:**
-```bash
-curl -X POST http://localhost:8000/api/v1/register/ -d "first_name=John&last_name=Doe&email=john.doe@example.com&password=secret"
-```
+## Введение
 
-### 2. User Authentication
+Данная документация описывает API для регистрации пользователей, авторизации, работы с товарами, корзиной и заказами. API предоставляет возможность взаимодействия с системой через HTTP-запросы.
 
-* **Method:** `POST`
-* **URL:** `http://localhost:8000/api/v1/login/`
-* **Description:** Authenticate a user using email and password.
-* **Parameters:**
-	+ `email` (string) - User's email.
-	+ `password` (string) - User's password.
-* **Example Request:**
-```bash
-curl -X POST http://localhost:8000/api/v1/login/ -d "email=john.doe@example.com&password=secret"
-```
+## Основные эндпоинты
 
-### 3. Get Products List
+### 1. Регистрация пользователя
+- Метод: POST
+- Эндпоинт: `/user/register`
+- Тело запроса:
+json
 
-* **Method:** `GET`
-* **URL:** `http://localhost:8000/api/v1/products/`
-* **Description:** Get a list of all available products.
-* **Example Request:**
-```bash
-curl http://localhost:8000/api/v1/products/
-```
+{
 
-### 4. Get Product Specification
+    "first_name": "string",  // Имя пользователя
+    "last_name": "string",   // Фамилия пользователя
+    "email": "string",       // Email пользователя
+    "password": "string",    // Пароль пользователя
+    "company": "string",     // Название компании
+    "position": "string"     // Должность пользователя
+}
 
-* **Method:** `GET`
-* **URL:** `http://localhost:8000/api/v1/products/{id}/`
-* **Description:** Get information about a specific product by its ID.
-* **Parameters:**
-	+ `id` (integer) - Product ID.
-* **Example Request:**
-```bash
-curl http://localhost:8000/api/v1/products/1/
-```
+Ответ:
 
-### 5. Add Product to Cart
+Успех: 201 Created
 
-* **Method:** `POST`
-* **URL:** `http://localhost:8000/api/v1/cart/`
-* **Description:** Add a product to the cart.
-* **Parameters:**
-	+ `product_info_id` (integer) - Product ID.
-	+ `quantity` (integer) - Product quantity.
-* **Headers:**
-	+ `Authorization: Token YOUR_TOKEN` - Authentication token.
-* **Example Request:**
-```bash
-curl -X POST http://localhost:8000/api/v1/cart/ -d "product_info_id=1&quantity=2" -H "Authorization: Token YOUR_TOKEN"
-```
+Ошибка: 4xx или 5xx в зависимости от типа ошибки.
 
-### 6. Remove Product from Cart
+### 2. Авторизация пользователя
+- Метод: POST
+- Эндпоинт: `/user/login`
+-Тело запроса:
 
-* **Method:** `DELETE`
-* **URL:** `http://localhost:8000/api/v1/cart/`
-* **Description:** Remove a product from the cart.
-* **Parameters:**
-	+ `item_id` (integer) - Product ID in the cart.
-* **Headers:**
-	+ `Authorization: Token YOUR_TOKEN` - Authentication token.
-* **Example Request:**
-```bash
-curl -X DELETE http://localhost:8000/api/v1/cart/ -d "item_id=1" -H "Authorization: Token YOUR_TOKEN"
-```
+{
 
-### 7. Add Delivery Address
+    "email": "string",       // Email пользователя
+    "password": "string"     // Пароль пользователя
+}
 
-* **Method:** `POST`
-* **URL:** `http://localhost:8000/api/v1/contacts/`
-* **Description:** Add a new delivery address.
-* **Parameters:**
-	+ `first_name` (string) - Recipient's first name.
-	+ `last_name` (string) - Recipient's last name.
-	+ `email` (string) - Recipient's email.
-	+ `phone` (string) - Recipient's phone number.
-	+ `address` (string) - Street address.
-	+ `city` (string) - City.
-	+ `street` (string) - Street.
-	+ `house` (string) - House number.
-	+ `structure` (string) - Building number.
-	+ `building` (string) - Apartment number.
-* **Headers:**
-	+ `Authorization: Token YOUR_TOKEN` - Authentication token.
-    
+Ответ:
+
+Успех: 200 OK с токеном
+
+Ошибка: 401 Unauthorized (неверные учетные данные)
+
+### 3. Получение списка товаров
+
+- Метод: GET
+- Эндпоинт: `/products`
+
+Ответ:
+
+Успех: 200 OK с массивом товаров
+
+Ошибка: 4xx или 5xx в зависимости от типа ошибки.
+
+### 4. Получение спецификации товара
+-Метод: GET
+-Эндпоинт: `/products/{product_id}/`
+-Параметры:
+`product_id` - ID товара
+
+Ответ:
+
+Успех: 200 OK с деталями товара
+
+Ошибка: 404 Not Found (товар не найден)
+
+### 5. Добавление товара в корзину
+- Метод: POST
+- Эндпоинт: `/basket`
+- Заголовки:
+- 
+Authorization: Token {token} - токен авторизации
+
+Тело запроса:
+
+{
+
+    "items": [
+        {
+            "product_info_id": "integer",  // ID товара
+            "quantity": "integer"           // Количество
+        }
+    ]
+}
+
+Ответ:
+
+Успех: 200 OK с сообщением об успехе
+
+Ошибка: 4xx или 5xx в зависимости от типа ошибки.
+
+### 6. Добавление адреса доставки
+- Метод: POST
+- Эндпоинт: `/user/contact`
+
+Заголовки:
+Authorization: Token {token} - токен авторизации
+
+Тело запроса:
+
+{
+
+    "city": "string",    // Город
+    "street": "string",  // Улица
+    "phone": "string"    // Телефон
+}
+
+Ответ:
+
+Успех: 200 OK с сообщением об успехе
+
+Ошибка: 4xx или 5xx в зависимости от типа ошибки.
+
+### 7. Подтверждение заказа
+- Метод: POST
+- Эндпоинт: `/order`
+  
+Заголовки:
+
+Authorization: Token {token} - токен авторизации
+
+Тело запроса:
+
+{
+
+    "contact": "integer"  // ID адреса доставки
+}
+
+Ответ:
+
+Успех: 200 OK с сообщением об успехе
+
+Ошибка: 4xx или 5xx в зависимости от типа ошибки.
+
+### 8. Получение списка заказов
+- Метод: GET
+- Эндпоинт: `/order`
+
+Заголовки:
+
+Authorization: Token {token} - токен авторизации
+
+Ответ:
+
+Успех: 200 OK с массивом заказов
+
+Ошибка: 4xx или 5xx в зависимости от типа ошибки.
