@@ -1,10 +1,10 @@
-
-from django.urls import path
+from django.urls import path, include
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from django_rest_passwordreset.views import reset_password_request_token, reset_password_confirm
 
 from backend.views import PartnerUpdate, RegisterAccount, LoginAccount, CategoryView, ShopView, ProductInfoView, \
     BasketView, \
-    AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, ProductDetailView
+    AccountDetails, ContactView, OrderView, PartnerState, PartnerOrders, ConfirmAccount, TestErrorView
 
 app_name = 'backend'
 urlpatterns = [
@@ -23,5 +23,9 @@ urlpatterns = [
     path('products', ProductInfoView.as_view(), name='shops'),
     path('basket', BasketView.as_view(), name='basket'),
     path('order', OrderView.as_view(), name='order'),
-    path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('accounts/', include('allauth.urls')),
+    path('test-error/', TestErrorView.as_view(), name='test-error'),
+
 ]

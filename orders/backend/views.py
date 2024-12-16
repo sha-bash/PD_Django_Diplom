@@ -7,9 +7,6 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
-
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from requests import get
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
@@ -22,10 +19,17 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
-from backend.signals import new_order
+from .tasks import send_password_reset_email, send_registration_email, send_order_notification
+from django.views.decorators.cache import cache_page
 
+@cache_page(60 * 15)
+class ProductListView(ListAPIView):
+    pass
 
-@method_decorator(csrf_exempt, name='dispatch')
+class TestErrorView(APIView):
+    def get(self, request):
+        raise ValueError("This is a test error.")
+
 class RegisterAccount(APIView):
     """
     Для регистрации покупателей
@@ -71,7 +75,7 @@ class RegisterAccount(APIView):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-@method_decorator(csrf_exempt, name='dispatch')
+
 class ConfirmAccount(APIView):
     """
     Класс для подтверждения почтового адреса
@@ -103,7 +107,7 @@ class ConfirmAccount(APIView):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-@method_decorator(csrf_exempt, name='dispatch')
+
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -170,7 +174,7 @@ class AccountDetails(APIView):
         else:
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
 
-@method_decorator(csrf_exempt, name='dispatch')
+
 class LoginAccount(APIView):
     """
     Класс для авторизации пользователей
@@ -736,35 +740,7 @@ class OrderView(APIView):
                     return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
                 else:
                     if is_updated:
-                        new_order.send(sender=self.__class__, user_id=request.user.id)
+                        send_order_notification.delay(request.user.id, request.data['id'])
                         return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
-class ProductDetailView(APIView):
-    """
-    A class for retrieving the specification of a single product.
-
-    Methods:
-    - get: Retrieve the specification of a single product.
-
-    Attributes:
-    - None
-    """
-
-    def get(self, request, pk, *args, **kwargs):
-        """
-        Retrieve the specification of a single product.
-
-        Args:
-        - request (Request): The Django request object.
-        - pk (int): The ID of the product.
-
-        Returns:
-        - Response: The response containing the product specification.
-        """
-        product_info = ProductInfo.objects.filter(id=pk).first()
-        if product_info:
-            serializer = ProductInfoSerializer(product_info)
-            return Response(serializer.data)
-        return Response({'Error': 'Product not found'}, status=404)

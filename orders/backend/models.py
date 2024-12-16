@@ -4,6 +4,12 @@ from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django_rest_passwordreset.tokens import get_token_generator
+from easy_thumbnails.fields import ThumbnailerImageField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .tasks import generate_thumbnails
+from .models import Product
+
 
 STATE_CHOICES = (
     ('basket', 'Статус корзины'),
@@ -154,6 +160,7 @@ class Product(models.Model):
     category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', blank=True,
                                  on_delete=models.CASCADE)
 
+    image = ThumbnailerImageField(upload_to='products/', blank=True, null=True)
     class Meta:
         verbose_name = 'Продукт'
         verbose_name_plural = "Список продуктов"
@@ -326,3 +333,8 @@ class ImportLog(models.Model):
 
     def __str__(self):
         return f'{self.supplier.name} - {self.file_name} - {self.import_date}'
+    
+
+@receiver(post_save, sender=Product)
+def create_thumbnails(sender, instance, **kwargs):
+    generate_thumbnails.delay(instance.pk, Product, 'image')
