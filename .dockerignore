@@ -1,0 +1,9 @@
+.git
+.idea
+__pycache__
+*.pyc
+.DS_Store
+*.log
+/static
+/media
+.env # Add your .env file if you have one
